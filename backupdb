@@ -1,0 +1,58 @@
+#!/bin/bash
+
+MONGO_USER=$(awk '/^EDXAPP_MONGO_USER/{print $2}' ~/my-passwords.yml | tr -d "'")
+MONGO_PASS=$(awk '/^EDXAPP_MONGO_PASSWORD/{print $2}' ~/my-passwords.yml | tr -d "'")
+FORUM_MONGO_USER=$(awk '/^FORUM_MONGO_USER/{print $2}' ~/my-passwords.yml | tr -d '"')
+FORUM_MONGO_PASS=$(awk '/^FORUM_MONGO_PASSWORD/{print $2}' ~/my-passwords.yml | tr -d "'")
+# Dropbox access token created at https://www.dropbox.com/developers/apps/create
+DROPBOX_ACCESS_TOKEN=18GlffbnzZAAAAAAAAAAD9eropt4rI8lsqPrXdddt-tlubgZDTHXS3yX7g6bvDti
+TARGETDIR=/home/ubuntu/edxdbbackup
+
+NOW=`date +"%Y-%m-%d"`
+FILENAME=/home/ubuntu/edxdbbackup_`hostname`_$NOW.tar.gz
+
+if [ -d $TARGETDIR ]; then
+  rm -R $TARGETDIR
+fi
+mkdir $TARGETDIR
+
+# backing up mysql db
+echo "Backing up mysql to $TARGETDIR/backup.sql"
+mysqldump --all-databases -u root --single-transaction > $TARGETDIR/backup.sql
+
+# backing up mongo db
+echo "Backing up mongodb edxapp to $TARGETDIR"
+mongodump --username $MONGO_USER --password $MONGO_PASS --db edxapp --out $TARGETDIR
+echo "Backing up mongodb cs_comments_service to $TARGETDIR"
+mongodump --username $FORUM_MONGO_USER --password $FORUM_MONGO_PASS --db cs_comments_service --out $TARGETDIR
+
+# Packing it to single file for easy copying to second sever
+echo "packing $TARGETDIR into $FILENAME"
+tar -zvcf $FILENAME $TARGETDIR
+FILESIZE=`stat --printf="%s" $FILENAME`
+echo "targz size: $FILESIZE bytes"
+
+#rm -R $TARGETDIR
+
+# Upload to Dropbox
+# See https://www.dropbox.com/developers/documentation/http/documentation
+
+echo "Uploading backup to dropbox"
+
+echo Openinig Dropbox session...
+SESSION_ID=$(curl -X POST https://content.dropboxapi.com/2/files/upload_session/start \
+    --header "Authorization: Bearer $DROPBOX_ACCESS_TOKEN" \
+    --header "Dropbox-API-Arg: {\"close\": false}" \
+    --header "Content-Type: application/octet-stream" \
+    --data-binary @$FILENAME | sed 's/^{\"session_id\": \"//' | sed 's/\"}$//')
+
+echo Finishing session...
+
+curl -X POST https://content.dropboxapi.com/2/files/upload_session/finish \
+    --header "Authorization: Bearer $DROPBOX_ACCESS_TOKEN" \
+    --header "Dropbox-API-Arg: {\"cursor\": {\"session_id\": \"$SESSION_ID\",\"offset\": $FILESIZE},\"commit\": {\"path\": \"/$(basename $FILENAME)\",\"mode\": \"overwr
+ite\",\"autorename\": true,\"mute\": false}}" \
+    --header "Content-Type: application/octet-stream" 
+echo
+
+
