@@ -1,10 +1,14 @@
 #!/bin/bash
+# Add to crontab with 'crontab -e', adding the following line at the bottom (remove the initial '#'):
+# 00 7    * * *    /home/ubuntu/backupdb/backupdb >> /home/ubuntu/backupdb.log
+# This will run the script at 7am GMT every day and append the results to /home/ubuntu/backupdb.log
 
 MONGO_USER=$(awk '/^EDXAPP_MONGO_USER/{print $2}' ~/my-passwords.yml | tr -d "'")
 MONGO_PASS=$(awk '/^EDXAPP_MONGO_PASSWORD/{print $2}' ~/my-passwords.yml | tr -d "'")
 FORUM_MONGO_USER=$(awk '/^FORUM_MONGO_USER/{print $2}' ~/my-passwords.yml | tr -d '"')
 FORUM_MONGO_PASS=$(awk '/^FORUM_MONGO_PASSWORD/{print $2}' ~/my-passwords.yml | tr -d "'")
 # Dropbox access token created at https://www.dropbox.com/developers/apps/create
+# Dropbox account: cursos@aulasneo.com
 DROPBOX_ACCESS_TOKEN=18GlffbnzZAAAAAAAAAAD9eropt4rI8lsqPrXdddt-tlubgZDTHXS3yX7g6bvDti
 TARGETDIR=/home/ubuntu/edxdbbackup
 
@@ -32,7 +36,7 @@ tar -zvcf $FILENAME $TARGETDIR
 FILESIZE=`stat --printf="%s" $FILENAME`
 echo "targz size: $FILESIZE bytes"
 
-#rm -R $TARGETDIR
+rm -R $TARGETDIR
 
 # Upload to Dropbox
 # See https://www.dropbox.com/developers/documentation/http/documentation
