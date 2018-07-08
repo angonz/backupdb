@@ -9,7 +9,7 @@ FORUM_MONGO_USER=$(awk '/^FORUM_MONGO_USER/{print $2}' ~/my-passwords.yml | tr -
 FORUM_MONGO_PASS=$(awk '/^FORUM_MONGO_PASSWORD/{print $2}' ~/my-passwords.yml | tr -d "'")
 # AWS S3 access key and token
 AWS_S3_ACCESS_KEY_ID=$(awk '/EDXAPP_AWS_ACCESS_KEY_ID/{print $2}' /edx/app/edx_ansible/server-vars.yml  | tr -d "\"")
-AWS_S3_ACCESS_SECRET_KEY=$(awk '/EDXAPP_AWS_ACCESS_SECRET_KEY/{print $2}' /edx/app/edx_ansible/server-vars.yml  | tr -d "\"")
+AWS_S3_SECRET_ACCESS_KEY=$(awk '/EDXAPP_AWS_SECRET_ACCESS_KEY/{print $2}' /edx/app/edx_ansible/server-vars.yml  | tr -d "\"")
 AWS_URL=s3-sa-east-1.amazonaws.com #If s3.amazonaws.com redirect does not work, use region specific url
 BUCKET=aulasneo-backup
 TARGETDIR=/home/ubuntu/edxdbbackup
