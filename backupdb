@@ -30,7 +30,7 @@ mkdir $TARGETDIR
 
 # backing up mysql db
 echo "Backing up mysql to $TARGETDIR/backup.sql"
-mysqldump --all-databases -u root --single-transaction > $TARGETDIR/backup.sql
+mysqldump --all-databases --add-drop-database --single-transaction -u root > $TARGETDIR/backup.sql
 
 # backing up mongo db
 echo "Backing up mongodb edxapp to $TARGETDIR"
