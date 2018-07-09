@@ -1,0 +1,52 @@
+#!/bin/bash
+
+MONGO_ADMIN_PASSWORD=$(awk '/^MONGO_ADMIN_PASSWORD/{print $2}' ~/my-passwords.yml | tr -d "'")
+MONGO_USER=$(awk '/^EDXAPP_MONGO_USER/{print $2}' ~/my-passwords.yml | tr -d "'")
+MONGO_PASS=$(awk '/^EDXAPP_MONGO_PASSWORD/{print $2}' ~/my-passwords.yml | tr -d "'")
+FORUM_MONGO_USER=$(awk '/^FORUM_MONGO_USER/{print $2}' ~/my-passwords.yml | tr -d '"')
+FORUM_MONGO_PASS=$(awk '/^FORUM_MONGO_PASSWORD/{print $2}' ~/my-passwords.yml | tr -d "'")
+# AWS S3 access key and token
+AWS_S3_ACCESS_KEY_ID=$(awk '/EDXAPP_AWS_ACCESS_KEY_ID/{print $2}' /edx/app/edx_ansible/server-vars.yml  | tr -d "\"")
+AWS_S3_SECRET_ACCESS_KEY=$(awk '/EDXAPP_AWS_SECRET_ACCESS_KEY/{print $2}' /edx/app/edx_ansible/server-vars.yml  | tr -d "\"")
+AWS_URL=s3-sa-east-1.amazonaws.com #If s3.amazonaws.com redirect does not work, use region specific url
+BUCKET=aulasneo-backup
+TARGETDIR=/home/ubuntu/edxdbbackup
+
+FILEPATH=/home/ubuntu/
+FILENAME=${1}
+RESOURCE="/$BUCKET/$FILENAME"
+CONTENT_TYPE="application/x-compressed-tar"
+DATE_VALUE=`date -R`
+STRING_TO_SIGN="GET\n\n$CONTENT_TYPE\n$DATE_VALUE\n$RESOURCE"
+SIGNATURE=`echo -en $STRING_TO_SIGN | openssl sha1 -hmac $AWS_S3_SECRET_ACCESS_KEY -binary | base64`
+
+cd $FILEPATH
+
+if [ -d $TARGETDIR ]; then
+  rm -R $TARGETDIR
+fi
+
+# Download backup from AWS S3
+curl -H "Host: $BUCKET.$AWS_URL" \
+     -H "Date: $DATE_VALUE" \
+     -H "Content-Type: $CONTENT_TYPE" \
+     -H "Authorization: AWS $AWS_S3_ACCESS_KEY_ID:$SIGNATURE" \
+     https://$BUCKET.$AWS_URL/$FILENAME \
+     -o $FILENAME
+
+# unpack tar.gz file
+echo "Unpacking $FILENAME"
+tar -zxvf $FILENAME -C /
+cd $TARGETDIR
+
+# Restore mysql
+echo "Restoring mysql"
+mysql -u root < $TARGETDIR/backup.sql
+
+# Restoring mongo db
+echo "Restoring mongo db"
+mongo --username $MONGO_USER --password $MONGO_PASS edxapp --eval "db.dropDatabase()"
+mongo --username $FORUM_MONGO_USER --password $FORUM_MONGO_PASS cs_comments_service --eval "db.dropDatabase()"
+mongorestore --username $MONGO_ADMIN_USER --password $MONGO_ADMIN_PASS --host localhost --authenticationDatabase admin edxapp
+mongorestore --username $MONGO_ADMIN_USER --password $MONGO_ADMIN_PASS --host localhost --authenticationDatabase admin cs_comments_service
+
