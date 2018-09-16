@@ -41,9 +41,9 @@ echo "Done backing up MySQL"
 # backing up mongo db
 echo "Backing up mongodb edxapp to $TARGETDIR"
 echo "Dumping Mongo db edxapp..."
-mongodump -u ${MONGO_USER} -p ${MONGO_PASS} -d edxapp --out ${TARGETDIR}/mongo-dump-${NOW}
+mongodump -u ${MONGO_USER} -p ${MONGO_PASS} -d edxapp --out ${TARGETDIR}
 echo "Dumping Mongo db cs_comment_service_development..."
-mongodump -u ${MONGO_USER} -p ${MONGO_PASS} -d edxapp --out ${TARGETDIR}/mongo-dump-${NOW}
+mongodump -u ${FORUM_MONGO_USER} -p ${FORUM_MONGO_PASS} -d cs_comment_service_development --out ${TARGETDIR}
 echo "Done backing up MongoDB"
 
 # Packing it to single file for easy copying to second sever
