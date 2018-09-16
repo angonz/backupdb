@@ -1,5 +1,6 @@
 #!/bin/bash
 
+MONGO_ADMIN_USER=admin
 MONGO_ADMIN_PASSWORD=$(awk '/^MONGO_ADMIN_PASSWORD/{print $2}' ~/my-passwords.yml | tr -d "'")
 MONGO_USER=$(awk '/^EDXAPP_MONGO_USER/{print $2}' ~/my-passwords.yml | tr -d "'")
 MONGO_PASS=$(awk '/^EDXAPP_MONGO_PASSWORD/{print $2}' ~/my-passwords.yml | tr -d "'")
@@ -26,13 +27,16 @@ if [ -d $TARGETDIR ]; then
   rm -R $TARGETDIR
 fi
 
-# Download backup from AWS S3
-curl -H "Host: $BUCKET.$AWS_URL" \
-     -H "Date: $DATE_VALUE" \
-     -H "Content-Type: $CONTENT_TYPE" \
-     -H "Authorization: AWS $AWS_S3_ACCESS_KEY_ID:$SIGNATURE" \
-     https://$BUCKET.$AWS_URL/$FILENAME \
-     -o $FILENAME
+if [ ! -f $FILENAME ]; then
+
+  # Download backup from AWS S3
+  curl -H "Host: $BUCKET.$AWS_URL" \
+       -H "Date: $DATE_VALUE" \
+       -H "Content-Type: $CONTENT_TYPE" \
+       -H "Authorization: AWS $AWS_S3_ACCESS_KEY_ID:$SIGNATURE" \
+       https://$BUCKET.$AWS_URL/$FILENAME \
+       -o $FILENAME
+fi
 
 # unpack tar.gz file
 echo "Unpacking $FILENAME"
@@ -45,8 +49,8 @@ mysql -u root < $TARGETDIR/backup.sql
 
 # Restoring mongo db
 echo "Restoring mongo db"
-mongo --username $MONGO_USER --password $MONGO_PASS edxapp --eval "db.dropDatabase()"
-mongo --username $FORUM_MONGO_USER --password $FORUM_MONGO_PASS cs_comments_service --eval "db.dropDatabase()"
-mongorestore --username $MONGO_ADMIN_USER --password $MONGO_ADMIN_PASS --host localhost --authenticationDatabase admin edxapp
-mongorestore --username $MONGO_ADMIN_USER --password $MONGO_ADMIN_PASS --host localhost --authenticationDatabase admin cs_comments_service
+#mongo --username $MONGO_ADMIN_USER --password $MONGO_ADMIN_PASSWORD edxapp --eval "db.dropDatabase()"
+#mongo --username $MONGO_ADMIN_USER --password $MONGO_ADMIN_PASSWORD cs_comments_service --eval "db.dropDatabase()"
+mongorestore --username $MONGO_ADMIN_USER --password $MONGO_ADMIN_PASSWORD --host localhost --authenticationDatabase admin edxapp
+mongorestore --username $MONGO_ADMIN_USER --password $MONGO_ADMIN_PASSWORD --host localhost --authenticationDatabase admin cs_comments_service
 
