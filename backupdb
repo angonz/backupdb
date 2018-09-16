@@ -22,7 +22,7 @@ CONTENT_TYPE="application/x-compressed-tar"
 DATE_VALUE=`date -R`
 STRING_TO_SIGN="PUT\n\n$CONTENT_TYPE\n$DATE_VALUE\n$RESOURCE"
 SIGNATURE=`echo -en $STRING_TO_SIGN | openssl sha1 -hmac $AWS_S3_SECRET_ACCESS_KEY -binary | base64`
-mysql -u root ANe "SELECT schema_name FROM information_schema.schemata WHERE schema_name NOT IN ('mysql','information_schema','performance_schema')" > /tmp/db.txt
+mysql -u root -ANe "SELECT schema_name FROM information_schema.schemata WHERE schema_name NOT IN ('mysql','information_schema','performance_schema')" > /tmp/db.txt
 DBS="--databases $(cat /tmp/db.txt)"
 
 if [ -d $TARGETDIR ]; then
@@ -40,10 +40,10 @@ echo "Done backing up MySQL"
 
 # backing up mongo db
 echo "Backing up mongodb edxapp to $TARGETDIR"
-for db in edxapp cs_comment_service_development; do
-    echo "Dumping Mongo db ${db}..."
-    mongodump -u admin -p'YOUR PASSWORD HERE' -h localhost --authenticationDatabase admin -d ${db} --out ${TARGETDIR}/mongo-dump-${NOW}
-done
+echo "Dumping Mongo db edxapp..."
+mongodump -u ${MONGO_USER} -p ${MONGO_PASS} -d edxapp --out ${TARGETDIR}/mongo-dump-${NOW}
+echo "Dumping Mongo db cs_comment_service_development..."
+mongodump -u ${MONGO_USER} -p ${MONGO_PASS} -d edxapp --out ${TARGETDIR}/mongo-dump-${NOW}
 echo "Done backing up MongoDB"
 
 # Packing it to single file for easy copying to second sever
