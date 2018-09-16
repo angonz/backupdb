@@ -22,6 +22,8 @@ CONTENT_TYPE="application/x-compressed-tar"
 DATE_VALUE=`date -R`
 STRING_TO_SIGN="PUT\n\n$CONTENT_TYPE\n$DATE_VALUE\n$RESOURCE"
 SIGNATURE=`echo -en $STRING_TO_SIGN | openssl sha1 -hmac $AWS_S3_SECRET_ACCESS_KEY -binary | base64`
+mysql -u root ANe "SELECT schema_name FROM information_schema.schemata WHERE schema_name NOT IN ('mysql','information_schema','performance_schema')" > /tmp/db.txt
+DBS="--databases $(cat /tmp/db.txt)"
 
 if [ -d $TARGETDIR ]; then
   rm -R $TARGETDIR
@@ -29,14 +31,20 @@ fi
 mkdir $TARGETDIR
 
 # backing up mysql db
-echo "Backing up mysql to $TARGETDIR/backup.sql"
-mysqldump --all-databases --add-drop-database --single-transaction -u root > $TARGETDIR/backup.sql
+echo "Backing up mysql structures to $TARGETDIR/backup.sql"
+mysqldump --add-drop-database --no-data ${DBS} -u root > $TARGETDIR/backup.sql
+echo "Dumping MySQL data..."
+# If there is table data you don't need, add --ignore-table=tablename
+mysqldump -u root --no-create-info ${DBS} >> $TARGETDIR/backup.sql
+echo "Done backing up MySQL"
 
 # backing up mongo db
 echo "Backing up mongodb edxapp to $TARGETDIR"
-mongodump --username $MONGO_USER --password $MONGO_PASS --db edxapp --out $TARGETDIR
-echo "Backing up mongodb cs_comments_service to $TARGETDIR"
-mongodump --username $FORUM_MONGO_USER --password $FORUM_MONGO_PASS --db cs_comments_service --out $TARGETDIR
+for db in edxapp cs_comment_service_development; do
+    echo "Dumping Mongo db ${db}..."
+    mongodump -u admin -p'YOUR PASSWORD HERE' -h localhost --authenticationDatabase admin -d ${db} --out ${TARGETDIR}/mongo-dump-${NOW}
+done
+echo "Done backing up MongoDB"
 
 # Packing it to single file for easy copying to second sever
 echo "packing $TARGETDIR into $FILENAME"
